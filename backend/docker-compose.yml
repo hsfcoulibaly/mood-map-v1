@@ -1,0 +1,44 @@
+# Local smoke test: API + MySQL (matches production-style networking).
+# From this directory:  docker compose up --build
+# Then: POST http://localhost:8000/api/auth/register  etc.
+
+services:
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root_local_only
+      MYSQL_DATABASE: moodmap
+      MYSQL_USER: moodmap
+      MYSQL_PASSWORD: moodmap_local
+    ports:
+      - "3306:3306"
+    volumes:
+      - moodmap_mysql_data:/var/lib/mysql
+      - ./sql/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot_local_only"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 30s
+
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      PORT: "8000"
+      DB_HOST: db
+      DB_USER: moodmap
+      DB_PASSWORD: moodmap_local
+      DB_NAME: moodmap
+      JWT_SECRET: "local-dev-only-min-32-characters-long-secret!!"
+      APP_ENV: development
+      GOOGLE_WEB_CLIENT_ID: "${GOOGLE_WEB_CLIENT_ID:-}"
+      CORS_ORIGINS: "${CORS_ORIGINS:-}"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  moodmap_mysql_data:

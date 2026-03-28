@@ -1,0 +1,10 @@
+# Repo-root builds: keep context small (Cloud Build default uses /workspace = repo root).
+.git
+.github
+.idea
+**/.pytest_cache
+**/__pycache__
+**/*.pyc
+mobile
+_web-ref
+*.md

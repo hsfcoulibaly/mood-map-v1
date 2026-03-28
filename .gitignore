@@ -1,0 +1,11 @@
+# Local reference clone (not part of this repo; clone separately if needed)
+_web-ref/
+
+# OS / tooling
+.DS_Store
+Thumbs.db
+
+# Python (if you ever add venv at repo root)
+.venv/
+venv/
+__pycache__/

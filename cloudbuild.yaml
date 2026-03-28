@@ -1,0 +1,24 @@
+# GCP Cloud Build — API image lives under backend/ (not repo root).
+# Connect repo in Cloud Build triggers and use this file, or run:
+#   gcloud builds submit --config=cloudbuild.yaml .
+#
+# Set substitution _IMAGE_NAME in the trigger (Artifact Registry recommended), e.g.:
+#   us-central1-docker.pkg.dev/PROJECT_ID/REPO/moodmap-api:latest
+
+substitutions:
+  # Override in the trigger for Artifact Registry, e.g. us-central1-docker.pkg.dev/PROJECT/REPO/moodmap-api:latest
+  _IMAGE_NAME: "gcr.io/$PROJECT_ID/moodmap-api:latest"
+
+steps:
+  # Uses repo-root Dockerfile (default Cloud Build “Dockerfile” trigger uses the same).
+  - name: "gcr.io/cloud-builders/docker"
+    args: ["build", "-t", "${_IMAGE_NAME}", "."]
+
+  - name: "gcr.io/cloud-builders/docker"
+    args: ["push", "${_IMAGE_NAME}"]
+
+images:
+  - "${_IMAGE_NAME}"
+
+options:
+  logging: CLOUD_LOGGING_ONLY
