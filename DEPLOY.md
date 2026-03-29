@@ -159,7 +159,7 @@ Use the same container image; configure target group health check on **`/health`
 
 ## 9. CI (GitHub Actions)
 
-On push/PR that touch `backend/`, **`.github/workflows/backend-docker.yml`** runs `docker build` against `./backend` (image is not pushed). Add `docker login` + `push: true` and your registry URL when you wire ECR or Artifact Registry.
+On push/PR that touch `backend/` or the root **`Dockerfile`**, **`.github/workflows/backend-docker.yml`** runs `docker build` from the **repo root** (image is not pushed). Add `docker login` + `push: true` and your registry URL when you wire ECR or Artifact Registry.
 
 ## 10. What this repo does *not* include
 
