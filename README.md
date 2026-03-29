@@ -11,6 +11,9 @@ Android client plus FastAPI backend for a campus **mood map**: anonymous pins on
 | `backend/sql/` | MySQL schema and migrations |
 | `backend/Dockerfile` | Container image for AWS / GCP / any Docker host |
 | [`DEPLOY.md`](DEPLOY.md) | **AWS & GCP deployment** (Cloud Run, App Runner, Docker Compose) |
+| [`gcp/deploy-cloud-run.sample.sh`](gcp/deploy-cloud-run.sample.sh) | Sample **`gcloud run deploy`** with Cloud SQL env vars |
+| Root [`Dockerfile`](Dockerfile) | API image for **GCP Cloud Build** default trigger (context = repo root) |
+| [`cloudbuild.yaml`](cloudbuild.yaml) | Optional Cloud Build: build + push |
 | `_web-ref/` | Optional local clone of the web repo for reference only (listed in root `.gitignore` so it is not committed) |
 
 ## Backend (FastAPI)

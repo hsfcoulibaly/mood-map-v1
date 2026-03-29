@@ -13,6 +13,8 @@ class Settings:
     db_user: str
     db_password: str
     db_name: str
+    # When set (e.g. Cloud Run + Cloud SQL), connect via /cloudsql/PROJECT:REGION:INSTANCE
+    cloud_sql_connection_name: str
     jwt_secret: str
     jwt_access_token_expire_minutes: int
     cors_origins: list[str]
@@ -43,6 +45,7 @@ def get_settings() -> Settings:
         db_user=os.getenv("DB_USER", "root"),
         db_password=os.getenv("DB_PASSWORD", ""),
         db_name=os.getenv("DB_NAME", "moodmap"),
+        cloud_sql_connection_name=os.getenv("CLOUD_SQL_CONNECTION_NAME", "").strip(),
         jwt_secret=secret,
         jwt_access_token_expire_minutes=expire_mins,
         cors_origins=origins,

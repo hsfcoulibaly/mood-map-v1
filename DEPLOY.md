@@ -8,7 +8,8 @@ Set these in your host’s secret manager or console (never commit real values).
 
 | Variable | Required | Notes |
 |----------|----------|--------|
-| `DB_HOST` | Yes | RDS / Cloud SQL **private IP**, or proxy hostname |
+| `DB_HOST` | Yes for TCP | MySQL host (local, RDS, or Cloud SQL **private IP**). **Not used** when `CLOUD_SQL_CONNECTION_NAME` is set (Cloud Run socket). |
+| `CLOUD_SQL_CONNECTION_NAME` | GCP Cloud Run + Cloud SQL | `project:region:instance`. Enables Unix socket `/cloudsql/...` (attach instance on the Cloud Run service). |
 | `DB_USER` | Yes | |
 | `DB_PASSWORD` | Yes | From Secrets Manager / Secret Manager |
 | `DB_NAME` | Yes | |
@@ -44,21 +45,49 @@ Stop: `docker compose down` (add `-v` to reset the DB volume).
 
 ## 4. Build the container image
 
-From the **repository root**:
-
-```bash
-docker build -t moodmap-api:latest ./backend
-```
-
-Or from `backend/`:
+From the **repository root** (matches Cloud Build / default Dockerfile trigger):
 
 ```bash
 docker build -t moodmap-api:latest .
 ```
 
+Or with context **`backend/`** (uses `backend/Dockerfile`):
+
+```bash
+docker build -t moodmap-api:latest -f backend/Dockerfile backend
+```
+
 ## 5. Google Cloud Platform (Cloud Run + Cloud SQL)
 
-High-level flow:
+### 5.1 One-command deploy (after the image exists)
+
+1. Grant the **Cloud Run service account** the role **Cloud SQL Client** on the project (Console → IAM, or):
+
+   ```bash
+   PROJECT_NUMBER=$(gcloud projects describe PROJECT_ID --format='value(projectNumber)')
+   gcloud projects add-iam-policy-binding PROJECT_ID \
+     --member="serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com" \
+     --role="roles/cloudsql.client"
+   ```
+
+2. Create secrets in **Secret Manager** (e.g. `moodmap-db-password`, `moodmap-jwt-secret`) and reference them on deploy.
+
+3. Deploy (adjust names; see `gcp/deploy-cloud-run.sample.sh` for a filled-out template):
+
+   ```bash
+   gcloud run deploy moodmap-api \
+     --image REGION-docker.pkg.dev/PROJECT_ID/REPO/moodmap-api:latest \
+     --region REGION \
+     --platform managed \
+     --allow-unauthenticated \
+     --add-cloudsql-instances PROJECT_ID:REGION:INSTANCE \
+     --set-env-vars "APP_ENV=production,CLOUD_SQL_CONNECTION_NAME=PROJECT_ID:REGION:INSTANCE,DB_USER=moodmap,DB_NAME=moodmap,GOOGLE_WEB_CLIENT_ID=YOUR_WEB_CLIENT_ID" \
+     --set-secrets "DB_PASSWORD=moodmap-db-password:latest,JWT_SECRET=moodmap-jwt-secret:latest"
+   ```
+
+   Use the same `PROJECT_ID:REGION:INSTANCE` string for **`--add-cloudsql-instances`** and **`CLOUD_SQL_CONNECTION_NAME`**.
+
+### 5.2 High-level flow
 
 1. Create a **MySQL** instance in **Cloud SQL** (same region you will use for Cloud Run).
 2. Create database + user; load schema with **`backend/sql/schema.sql`** only (Cloud Storage import, or paste/run in **Cloud SQL Studio**).
@@ -84,9 +113,9 @@ High-level flow:
 
 7. **Cloud Run** → Create service → container image above.
    - **Authentication**: allow unauthenticated invocations *only if* you want a public API (typical for mobile backends; you still protect routes with JWT).
-   - **Cloud SQL connections**: attach the Cloud SQL instance (Unix socket / connector). Set `DB_HOST` to the **socket host** Cloud Run documents for your language (for `mysql-connector`, use the instance connection name with Cloud SQL Auth Proxy sidecar, or use **private IP** + VPC connector — see [Connect from Cloud Run to Cloud SQL](https://cloud.google.com/sql/docs/mysql/connect-run)).
-   - **Secrets**: inject `DB_PASSWORD`, `JWT_SECRET`, `GOOGLE_WEB_CLIENT_ID` from Secret Manager as env vars.
-   - **Variables**: `APP_ENV=production`, `DB_USER`, `DB_NAME`, etc.
+   - **Cloud SQL**: under **Connections** add your MySQL instance. Set env **`CLOUD_SQL_CONNECTION_NAME`** to `project:region:instance` (same string as in the console “Connection name”). The API connects via **`mysql-connector` + Unix socket** `/cloudsql/...` (no `DB_HOST` needed for this path). For **private IP** without the connector, omit `CLOUD_SQL_CONNECTION_NAME`, use a **VPC connector**, and set **`DB_HOST`** to the instance private IP. See [Connect from Cloud Run to Cloud SQL](https://cloud.google.com/sql/docs/mysql/connect-run).
+   - **Secrets**: inject `DB_PASSWORD`, `JWT_SECRET` from Secret Manager; set `GOOGLE_WEB_CLIENT_ID` as plain env (or secret if you prefer).
+   - **Variables**: `APP_ENV=production`, `DB_USER`, `DB_NAME`, and **`CLOUD_SQL_CONNECTION_NAME`** when using the built-in socket.
 
 8. After deploy, Cloud Run gives an **HTTPS** URL. Put that base URL + trailing slash in Android **`MOOD_MAP_API_BASE_URL`** for release.
 

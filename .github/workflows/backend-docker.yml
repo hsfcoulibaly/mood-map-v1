@@ -5,10 +5,14 @@ on:
   push:
     paths:
       - "backend/**"
+      - "Dockerfile"
+      - ".dockerignore"
       - ".github/workflows/backend-docker.yml"
   pull_request:
     paths:
       - "backend/**"
+      - "Dockerfile"
+      - ".dockerignore"
       - ".github/workflows/backend-docker.yml"
 
 jobs:
@@ -20,6 +24,7 @@ jobs:
       - name: Build image
         uses: docker/build-push-action@v6
         with:
-          context: ./backend
+          context: .
+          file: ./Dockerfile
           push: false
           tags: moodmap-api:test
